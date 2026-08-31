@@ -8,8 +8,7 @@
  *   App.UI.Components.celebrate(el, count)        星星爱心爆裂特效
  *   App.UI.Components.speakBtn(text, size)        圆形发音按钮
  *   App.UI.Components.progressBar(value, cls)     粉色进度条
- *   App.UI.Components.userModal()                 学习者管理弹窗（添加/切换）
- *   App.UI.Components.welcomeModal(onDone)        首次使用欢迎弹窗（取名）
+ *   App.UI.Components.userModal()                 账号管理弹窗（退出/注册/删除/管理员面板）
  * ============================================================================ */
 (function (C) {
   'use strict';
@@ -170,125 +169,110 @@
     );
   };
 
-  /* ---------------- 学习者管理弹窗 ---------------- */
+  /* ---------------- 账号管理弹窗 ---------------- */
 
-  /** 添加/切换/删除学习者（数据隔离的核心入口），弹窗可反复打开 */
+  /** 我的账号：退出登录 / 注册新账号 / 删除我的账号（管理员多一个本机账号面板） */
   C.userModal = function () {
-    function renderDialog() {
-      return App.Store.listUsers().then(function (users) {
-        var cur = App.Store.getCurrentUser();
-        var rows = users.map(function (usr) {
-          var isMe = cur && usr.id === cur.id;
-          return '<div class="user-row flex items-center gap-3 rounded-2xl border-2 px-4 py-3 ' +
-            (isMe ? 'border-kitty-400 bg-kitty-50' : 'border-transparent bg-white') + '" data-uid="' + usr.id + '">' +
-            '<div class="flex h-12 w-12 items-center justify-center rounded-full bg-kitty-100 text-2xl">' + usr.avatar + '</div>' +
-            '<div class="min-w-0 flex-1">' +
-              '<div class="truncate font-bold text-slate-700">' + u().esc(usr.name) +
-                (isMe ? '<span class="ml-2 rounded-full bg-kitty-500 px-2 py-0.5 text-[10px] text-white">当前</span>' : '') +
-              '</div>' +
-              '<div class="text-xs text-slate-400">⭐ ' + '星星等你来赚</div>' +
-            '</div>' +
-          '</div>';
-        }).join('');
+    var cur = App.Store.getCurrentUser();
+    var isAdmin = App.Store.isAdmin();
+    if (!cur) return;
 
-        var content =
-          '<div class="p-6">' +
-            '<div class="mb-3 flex items-center justify-between">' +
-              '<h2 class="text-lg font-extrabold text-kitty-600">🎀 学习者管理</h2>' +
-              '<button data-close class="flex h-9 w-9 items-center justify-center rounded-full bg-kitty-50 text-lg text-kitty-500 hover:bg-kitty-100">✕</button>' +
-            '</div>' +
-            '<p class="mb-4 text-xs leading-5 text-slate-400">每一位学习者的成绩、星星、学习时间都独立保存，互不干扰！</p>' +
-            '<div class="mb-4 flex max-h-56 flex-col gap-2 overflow-y-auto pr-1">' + rows + '</div>' +
-            '<div class="mb-3 flex gap-2">' +
-              '<input id="k-new-name" maxlength="12" placeholder="新学习者的昵称（如：糖糖）" ' +
-                'class="min-w-0 flex-1 rounded-full border-2 border-kitty-200 bg-white px-4 py-2.5 text-sm font-bold outline-none transition focus:border-kitty-400" />' +
-              '<button id="k-add-user" class="btn-kitty px-5 text-sm">＋ 添加</button>' +
-            '</div>' +
-            '<button id="k-manage" class="btn-ghost w-full py-2.5 text-sm">🗑️ 删除当前学习者（清空其本机数据）</button>' +
-          '</div>';
-
-        var m = C.modal({ content: content, dark: true });
-        m.root.querySelector('[data-close]').addEventListener('click', m.close);
-        // 切换学习者
-        m.root.querySelectorAll('.user-row').forEach(function (row) {
-          row.addEventListener('click', function () {
-            var uid = row.getAttribute('data-uid');
-            if (cur && uid === cur.id) return;
-            App.Store.enter(uid).then(function () {
-              m.close();
-              App.Utils.bus.emit('progress', { type: 'user-switch' }); // 各页面自己刷新
-              App.Router.go(App.Router.current() === '/home' ? '#/home' : App.Router.current()); // 重新挂载当前页
-            });
-          });
-        });
-        // 添加
-        var addBtn = m.root.querySelector('#k-add-user');
-        function doAdd() {
-          var input = m.root.querySelector('#k-new-name');
-          var name = (input.value || '').trim();
-          if (!name) { input.focus(); return; }
-          App.Store.addUser(name).then(function () {
-            m.close();
-            App.Utils.bus.emit('progress', { type: 'user-switch' });
-            App.Router.go(App.Router.current() === '/home' ? '#/home' : App.Router.current());
-          });
-        }
-        addBtn.addEventListener('click', doAdd);
-        m.root.querySelector('#k-new-name').addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') doAdd();
-        });
-        // 删除当前
-        m.root.querySelector('#k-manage').addEventListener('click', function () {
-          var curUser = App.Store.getCurrentUser();
-          if (!curUser) return;
-          var ok = confirm('确定删除「' + curUser.name + '」及其在本机的全部学习数据吗？此操作不可恢复。');
-          if (!ok) return;
-          App.Store.deleteUser(curUser.id).then(function () {
-            m.close();
-            // 若还有其他学习者，切换过去；否则回首页等引导
-            App.Store.listUsers().then(function (users) {
-              if (users.length) App.Store.enter(users[0].id);
-              else App.Store.addUser('小可爱');
-            }).then(function () {
-              App.Utils.bus.emit('progress', { type: 'user-switch' });
-              App.Router.go('#/home');
-            });
-          });
-        });
-        return m;
-      });
-    }
-    renderDialog();
-  };
-
-  /* ---------------- 首次使用欢迎弹窗 ---------------- */
-
-  /** 尚无学习者时调用：让小朋友输入名字创建学习档案 */
-  C.welcomeModal = function () {
+    var roleBadge = isAdmin
+      ? '<span class="ml-2 rounded-full bg-gradient-to-r from-amber-300 to-kitty-400 px-2 py-0.5 text-[10px] font-extrabold text-white">👑 管理员</span>'
+      : '';
     var content =
-      '<div class="relative flex flex-col items-center gap-3 p-8 text-center">' +
-        '<div class="pointer-events-none absolute left-3 top-3 animate-wiggle">' + App.UI.Kitty.bow({ size: 34 }) + '</div>' +
-        '<div class="animate-bob">' + App.UI.Kitty.fullBody({ size: 190 }) + '</div>' +
-        '<div class="text-2xl font-extrabold text-kitty-600">欢迎来到 Kitty 英语乐园！</div>' +
-        '<p class="text-sm leading-6 text-slate-500">你好呀～我是小猫 Kitty！<br/>先告诉我要怎么称呼你，我们一起开心学英语吧！</p>' +
-        '<input id="k-welcome-name" maxlength="12" placeholder="输入你的名字（如：糖糖）" ' +
-          'class="w-full rounded-full border-2 border-kitty-200 bg-white px-5 py-3 text-center text-base font-bold outline-none transition focus:border-kitty-400" />' +
-        '<button id="k-welcome-go" class="btn-kitty w-full py-3.5 text-lg">🎀 开始学习吧！</button>' +
-        '<p class="text-[11px] text-slate-400">学习进度会自动保存在本机浏览器，无需注册、断网也能学</p>' +
+      '<div class="p-6">' +
+        '<div class="mb-3 flex items-center justify-between">' +
+          '<h2 class="text-lg font-extrabold text-kitty-600">🎀 我的账号</h2>' +
+          '<button data-close class="flex h-9 w-9 items-center justify-center rounded-full bg-kitty-50 text-lg text-kitty-500 hover:bg-kitty-100">✕</button>' +
+        '</div>' +
+        '<div class="flex items-center gap-3 rounded-2xl border-2 border-kitty-200 bg-kitty-50 px-4 py-3">' +
+          '<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-2xl">' + (cur.avatar || '🐰') + '</div>' +
+          '<div class="min-w-0 flex-1">' +
+            '<div class="truncate font-extrabold text-slate-700">' + u().esc(cur.name) + roleBadge + '</div>' +
+            '<div class="text-xs text-slate-400">账号：' + u().esc(cur.username || '—') + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="mt-4 text-xs leading-5 text-slate-400">💾 你的学习数据（单词、星星、时长）随账号保存在<b>本机</b>，关掉页面、断开网络都不会丢。换设备请用「学习进度中心 → 数据同步」。</div>' +
+        '<div class="mt-4 flex flex-col gap-2">' +
+          '<button id="k-logout" class="btn-ghost w-full py-2.5 text-sm">🚪 退出登录（换账号）</button>' +
+          '<button id="k-register" class="btn-ghost w-full py-2.5 text-sm">✨ 注册新账号</button>' +
+          (isAdmin
+            ? '<button id="k-super" class="btn-ghost w-full py-2.5 text-sm">👑 本机账号管理（管理员）</button>'
+            : '<button id="k-del" class="btn-ghost w-full py-2.5 text-sm text-rose-400">🗑️ 删除我的账号（含全部数据）</button>') +
+        '</div>' +
       '</div>';
-    var m = C.modal({ content: content, dark: false });
-    var input = m.root.querySelector('#k-welcome-name');
-    var go = m.root.querySelector('#k-welcome-go');
-    function submit() {
-      var name = (input.value || '').trim() || '小可爱';
-      App.Store.addUser(name).then(function () {
+
+    var m = C.modal({ content: content, dark: true });
+    m.root.querySelector('[data-close]').addEventListener('click', m.close);
+    m.root.querySelector('#k-logout').addEventListener('click', function () {
+      App.Store.logout().then(function () {
         m.close();
-        App.Utils.bus.emit('progress', { type: 'user-switch' });
+        App.Audio.chime('click');
+        App.Router.go('#/auth');
+      });
+    });
+    m.root.querySelector('#k-register').addEventListener('click', function () {
+      m.close();
+      App.Router.go('#/auth/register');
+    });
+    var delBtn = m.root.querySelector('#k-del');
+    if (delBtn) {
+      delBtn.addEventListener('click', function () {
+        if (!window.confirm('确定删除账号「' + cur.name + '」和它在本机的全部学习数据吗？此操作不可恢复。')) return;
+        var pwd = window.prompt('为确保安全，请输入「' + cur.name + '」的登录密码：');
+        if (pwd === null) return;
+        App.Store.verifyPassword(pwd).then(function (ok) {
+          if (!ok) { window.alert('密码不对，没有删除。'); return false; }
+          return App.Store.deleteUser(cur.id).then(function () {
+            m.close();
+            App.Router.go('#/auth');
+          }).catch(function (err) { window.alert(err.message || '删除失败。'); });
+        }).catch(function () {});
       });
     }
-    go.addEventListener('click', submit);
-    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
-    setTimeout(function () { input.focus(); }, 300);
+    var superBtn = m.root.querySelector('#k-super');
+    if (superBtn) {
+      superBtn.addEventListener('click', function () {
+        App.Store.listUsers().then(function (users) {
+          var rows = users.map(function (u) {
+            var isAdminRow = u.role === 'admin';
+            return '<div class="flex items-center gap-3 rounded-2xl bg-white px-4 py-2.5">' +
+              '<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-kitty-50 text-xl">' + u.avatar + '</div>' +
+              '<div class="min-w-0 flex-1">' +
+                '<div class="truncate text-sm font-bold text-slate-700">' + u().esc(u.name) +
+                  (isAdminRow ? ' <span class="text-[10px] text-amber-500">👑 管理员</span>' : '') + '</div>' +
+                '<div class="text-[11px] text-slate-400">' + u().esc(u.username || '—') + ' · ' + new Date(u.createdAt).toLocaleDateString() + '</div>' +
+              '</div>' +
+              (isAdminRow
+                ? '<span class="text-[11px] text-slate-300">受保护</span>'
+                : '<button data-del="' + u.id + '" class="shrink-0 rounded-full border-2 border-rose-100 px-3 py-1 text-xs font-bold text-rose-400">删除</button>') +
+            '</div>';
+          }).join('');
+          var content2 =
+            '<div class="p-6">' +
+              '<div class="mb-3 flex items-center justify-between">' +
+                '<h2 class="text-lg font-extrabold text-kitty-600">👑 本机账号列表</h2>' +
+                '<button data-close class="flex h-9 w-9 items-center justify-center rounded-full bg-kitty-50 text-lg text-kitty-500 hover:bg-kitty-100">✕</button>' +
+              '</div>' +
+              '<div class="flex max-h-[60vh] flex-col gap-2 overflow-y-auto pr-1">' + rows + '</div>' +
+            '</div>';
+          var m2 = C.modal({ content: content2, dark: true });
+          m2.root.querySelector('[data-close]').addEventListener('click', m2.close);
+          m2.root.querySelectorAll('[data-del]').forEach(function (b) {
+            b.addEventListener('click', function () {
+              var uid = b.getAttribute('data-del');
+              var target = users.find(function (x) { return x.id === uid; });
+              if (!window.confirm('确定删除账号「' + (target ? target.name : '') + '」及其全部学习数据吗？')) return;
+              App.Store.deleteUser(uid).then(function () {
+                m2.close();
+                userModal();
+              }).catch(function (err) { window.alert(err.message || '删除失败。'); });
+            });
+          });
+        });
+      });
+    }
   };
 
   /* ---------------- 页面通用空状态 ---------------- */

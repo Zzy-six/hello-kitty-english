@@ -3,7 +3,7 @@
  * ----------------------------------------------------------------------------
  * 展示：个人卡片(称号+头像)、星星/已学单词/正确率/学习天数、
  *       近7天学习时长柱状图、分级掌握度进度条(七年级→高三)、单词列表(带筛选/发音)、
- *       数据管理(切换/新增/删除学员、重置进度)、存储方式提示。
+ *       数据管理(账号管理、换设备同步、重置进度)、存储方式提示。
  * 所有数据来自 core/store.js 的 IndexedDB 持久化（★ 数据层增改见 Store）。
  * ============================================================================ */
 (function (Feature) {
@@ -164,11 +164,11 @@
       '<div class="kitty-card mt-4 p-5">' +
         '<div class="mb-3 font-extrabold text-slate-700">🛠 数据管理</div>' +
         '<div class="flex flex-wrap gap-2.5">' +
-          '<button id="k-users" class="btn-ghost py-2.5">👧 切换 / 新增学员</button>' +
+          '<button id="k-users" class="btn-ghost py-2.5">🎀 我的账号</button>' +
           '<button id="k-sync" class="btn-ghost py-2.5">🔄 换设备 / 数据同步</button>' +
           '<button id="k-reset" class="btn-ghost py-2.5 text-rose-400">🧹 清空我的进度</button>' +
         '</div>' +
-        '<div class="mt-3 text-xs leading-5 text-slate-400">💾 学习记录(单词、星星、时长)都保存在<b>本机浏览器</b>的 IndexedDB 中，完全免费、无需联网、关掉页面也不会丢失。想在<b>电脑 ↔ 手机</b>间同步同一学员的数据？点「🔄 换设备 / 数据同步」，一键生成一串「分享码」，在另一台设备粘贴导入即可（可选合并或覆盖）。' + (App2.DB.isFallback() ? '' : '同一设备上还可用「👧」随时切换学员。') + '</div>' +
+        '<div class="mt-3 text-xs leading-5 text-slate-400">💾 学习记录(单词、星星、时长)随<b>账号</b>保存在<b>本机</b> IndexedDB 中，完全免费、无需联网、关掉页面也不会丢失。想在<b>电脑 ↔ 手机</b>间同步同一账号的数据？点「🔄 换设备 / 数据同步」，一键生成一串「分享码」，在另一台设备粘贴导入即可（可选合并或覆盖）。</div>' +
       '</div>' + fallbackNote;
 
     /* —— 组装 —— */

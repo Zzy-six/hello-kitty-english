@@ -18,14 +18,20 @@
 3. `src/index.html` 是唯一入口，所有 `src/js/**` 都以 `<script>` 标签顺序加载（顺序即依赖）。
 4. 内容（数据）与逻辑分离：词句都放 `src/js/data/`，业务代码读数据不写死内容。
 5. 路由是 hash 路由（`#/quiz/play?cat=animals`），**query 参数是字符串**，做算术先 `Number()`。
+6. 游客放行路径（登录页/注册页：`/auth`、`/auth/register`）：
+   `app.js` 的 `bus.on('route')` 守卫名单里必须保留，否则未登录会死循环跳转。
+7. 账号是**本地账号**（存本机 IndexedDB，零后端）：新账号一律走 `Store.register()`；
+   内置管理员种子在 `store.js` 顶部 `ADMIN_SEED`，**其账号密码永不写入 README/AI_GUIDE/任何用户文档**。
 
 ## 常用 API 速查
 
 | 需求 | 调用 |
 |---|---|
 | 初始化存储 | `await App.DB.ready()`（不是 `App.DB.open`） |
-| 当前学习者 | `App.Store.getCurrentUser()` |
-| 加/切/删学习者 | `App.Store.addUser(name)` / `enter(id)` / `deleteUser(id)`（均返回 Promise） |
+| 当前账号 | `App.Store.getCurrentUser()` |
+| 注册/登录/登出 | `Store.register(用户名, 密码, 昵称, 头像)` / `Store.login(u, p)` / `Store.logout()`（失败均 Promise.reject 中文错误） |
+| 账号管理 | `Store.listUsers()` / `enter(id)` / `deleteUser(id)` / `verifyPassword(pwd)` / `isAdmin()`（返回 Promise） |
+| 旧版无账号入口 | `Store.addUser(name)` 是遗留 API，新功能别用 |
 | 词表 | `App.Data.Words.list(catId)` → 数组；`byCategory(id)` → 分类对象；`levels` → 6个等级；`byLevel(id)` → **某等级的类别数组**（不是等级对象）；`listByLevel(id)` → 某等级全部单词 |
 | 关卡 | `App.Data.GameConfig.byId(n)`（安全返回 null，勿加默认可掩盖 bug） |
 | 顶栏星星 | 事件 `App.Utils.bus.emit('stars', ...)`，页面监听刷新 |
@@ -49,6 +55,7 @@
 npm run serve   # http://localhost:8080，浏览器手测功能
 npm run smoke   # 桌面版自检：打印 [SMOKE] OK 且 exit 0
 npm run dist    # 打包 exe
+npx electron scripts/account-probe.js   # 账号功能探针：[ACCOUNT-PROBE] OK 且 exit 0
 ```
 
 手测清单与已知坑见 [README.md](README.md) 的「每个迭代的必测清单」和「易踩的坑」。
@@ -56,6 +63,6 @@ npm run dist    # 打包 exe
 ## 沟通约定
 
 - 中文注释、中文 UI 文案；英文只出现在学习内容（单词/对话）。
-- 零成本路线不可动摇：不引付费 API、不加登录、不引入需要联网的 CDN
-  （改 Tailwind 等资源必须本地化到 `src/vendor/`）。
+- 零成本路线不可动摇：不引付费 API、不加**联网**登录/云服务、不引入需要联网的 CDN
+  （改 Tailwind 等资源必须本地化到 `src/vendor/`）。本地账号（数据存本机 IndexedDB）是允许的。
 - 小猫是原创形象，任何新素材必须可自由商用或自绘/程序生成。

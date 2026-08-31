@@ -14,11 +14,11 @@
 (function (Store) {
   'use strict';
 
-  var CURRENT_KEY = 'kitty.currentUserId'; // localStorage 记住上次使用的学习者
-  var current = null;    // 当前学习者对象 {id,name,avatar,...}
+  var CURRENT_KEY = 'kitty.currentUserId'; // localStorage 记住上次登录的账号
+  var current = null;    // 当前登录账号对象 {id,name,avatar,username,role,...}
   var cache = {};        // 当前用户数据缓存 { wordStats:{}, daily:{}, meta:{} }
 
-  /* ---------------- 学习者档案 ---------------- */
+  /* ---------------- 账号 & 档案 ---------------- */
 
   /** 可选头像（可爱表情，免费系统自带） */
   var AVATARS = ['🐱', '🎀', '🐰', '🐼', '🦄', '🌸', '🍓', '⭐', '🐹', '🍭'];
@@ -26,17 +26,125 @@
 
   Store.AVATARS = AVATARS;
 
-  /** 应用启动时调用：加载用户列表（同时缓存到内存供同步查询） */
+  /** 用户名规则：2~20 位字母/数字/下划线（存储/比较统一小写） */
+  var USERNAME_RE = /^[a-z0-9_]{2,20}$/;
+
+  /** 内置管理员账号（仅代码种子数据，不出现在任何文档说明中） */
+  var ADMIN_SEED = { username: 'zzy', password: 'Zzy' };
+
+  /** 应用启动时调用：加载账号列表 → 兜底创建管理员 → 恢复登录态 */
   Store.init = function () {
     return Store.listUsers().then(function (users) {
       usersCache = users;
-      if (users.length === 0) return [];
-      // 恢复上次选中的学习者；若记录失效则选第一个
+      return ensureAdmin();
+    }).then(function () {
+      // 恢复上次登录的账号；必须是「完整账号」（有用户名+密码）才自动进入
       var savedId = null;
       try { savedId = localStorage.getItem(CURRENT_KEY); } catch (e) {}
-      var found = users.find(function (u) { return u.id === savedId; });
-      return Store.enter(found ? found.id : users[0].id);
+      var saved = usersCache.find(function (u) { return u.id === savedId; });
+      if (saved && saved.username && saved.passwordHash) return Store.enter(saved.id);
+      return null; // 未登录 → 由启动器跳到登录页
     });
+  };
+
+  /** 预置管理员账号：每次启动兜底检查，保证管理员永远存在（不可删） */
+  function ensureAdmin() {
+    var has = usersCache.some(function (u) { return u.username === ADMIN_SEED.username; });
+    if (has) return Promise.resolve();
+    var admin = {
+      id: App.Utils.uid('a'),
+      name: ADMIN_SEED.username,
+      avatar: '👑',
+      username: ADMIN_SEED.username,
+      role: 'admin',
+      passwordHash: hashPassword(ADMIN_SEED.password, ADMIN_SEED.username),
+      createdAt: Date.now()
+    };
+    return App.DB.put('users', admin).then(function () {
+      usersCache.push(admin);
+    });
+  }
+
+  /** 加盐单向哈希（非密码学安全，但用于本地防明文存储已足够） */
+  function hashPassword(password, salt) {
+    var str = salt + '\u2605kitty\u2605' + String(password) + '\u2605' + salt;
+    var h1 = 0xdeadbeef ^ str.length, h2 = 0x41c6ce57 ^ str.length;
+    for (var r = 0; r < 512; r++) {
+      for (var i = 0; i < str.length; i++) {
+        h1 = Math.imul(h1 ^ str.charCodeAt(i), 2654435761);
+        h2 = Math.imul(h2 ^ str.charCodeAt(i), 1597334677);
+      }
+      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+      h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+    }
+    h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507);
+    h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507);
+    return (h2 >>> 0).toString(16).padStart(8, '0') + (h1 >>> 0).toString(16).padStart(8, '0');
+  }
+
+  Store.hashPassword = hashPassword; // 供其他层演示/校验复用
+
+  /** 注册新账号（数据只保存在本机，账号名全局唯一） */
+  Store.register = function (username, password, nickname, avatar) {
+    username = String(username || '').trim().toLowerCase();
+    nickname = String(nickname || '').trim().slice(0, 12);
+    if (!USERNAME_RE.test(username)) {
+      return Promise.reject(new Error('账号需 2~20 位字母、数字或下划线。'));
+    }
+    if (String(password || '').length < 3) {
+      return Promise.reject(new Error('密码至少 3 位，记得保护好哦。'));
+    }
+    if (usersCache.some(function (u) { return u.username === username; })) {
+      return Promise.reject(new Error('这个账号已经被注册啦，直接登录吧！'));
+    }
+    var user = {
+      id: App.Utils.uid('k'),
+      name: nickname || username,
+      avatar: avatar || AVATARS[Math.floor(Math.random() * AVATARS.length)],
+      username: username,
+      role: 'user',
+      passwordHash: hashPassword(password, username),
+      createdAt: Date.now()
+    };
+    return App.DB.put('users', user).then(function () {
+      usersCache.push(user);
+      return Store.enter(user.id);
+    }).then(function () {
+      return user;
+    });
+  };
+
+  /** 账号登录（用户名不区分大小写） */
+  Store.login = function (username, password) {
+    username = String(username || '').trim().toLowerCase();
+    var u = usersCache.find(function (x) { return x.username === username; });
+    if (!u) {
+      return Promise.reject(new Error('该账号还没有注册，先创建一个吧！'));
+    }
+    if (hashPassword(password || '', username) !== u.passwordHash) {
+      return Promise.reject(new Error('密码不对哦，再试一次～'));
+    }
+    return Store.enter(u.id);
+  };
+
+  /** 退出登录：回到登录页（数据都还在本机，下次登录接着学） */
+  Store.logout = function () {
+    current = null;
+    cache = { wordStats: {}, daily: {}, meta: null };
+    try { localStorage.removeItem(CURRENT_KEY); } catch (e) {}
+    App.Utils.bus.emit('user-changed', null);
+    return Promise.resolve();
+  };
+
+  /** 当前是否管理员 */
+  Store.isAdmin = function () {
+    return !!(current && current.role === 'admin');
+  };
+
+  /** 校验当前账号密码（删除账号等敏感操作前用） */
+  Store.verifyPassword = function (password) {
+    if (!current || !current.username) return Promise.resolve(false);
+    return Promise.resolve(hashPassword(password || '', current.username) === current.passwordHash);
   };
 
   Store.listUsers = function () {
@@ -45,7 +153,7 @@
     });
   };
 
-  /** 新增学习者并自动切换为当前用户 */
+  /** 新增学习者并自动切换为当前用户（旧版无账号入口；新功能请用 Store.register） */
   Store.addUser = function (name, avatar) {
     var user = {
       id: App.Utils.uid('u'),
@@ -98,8 +206,12 @@
     });
   };
 
-  /** 删除学习者：清除其全部数据（档案/单词统计/每日统计/积分） */
+  /** 删除账号：清除其全部数据（档案/单词统计/每日统计/积分）；管理员账号受保护 */
   Store.deleteUser = function (userId) {
+    var target = usersCache.find(function (u) { return u.id === userId; });
+    if (target && target.role === 'admin') {
+      return Promise.reject(new Error('管理员账号不可删除。'));
+    }
     var jobs = [];
     jobs.push(App.DB.delete('users', userId));
     jobs.push(App.DB.byUser('wordStats', userId).then(function (rows) {

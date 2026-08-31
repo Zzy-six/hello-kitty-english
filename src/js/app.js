@@ -67,6 +67,8 @@
   /* ---------------- 路由注册区（★ ZyCode 新页面在此加一行） ---------------- */
 
   function registerRoutes() {
+    App2.Router.register('#/auth', App2.Features.Auth);
+    App2.Router.register('#/auth/register', App2.Features.AuthRegister);
     App2.Router.register('#/home', App2.Features.Home);
     App2.Router.register('#/quiz', App2.Features.Quiz);
     App2.Router.register('#/quiz/level', App2.Features.Quiz);
@@ -84,6 +86,20 @@
     headerEl = document.getElementById('app-header');
     buildHeader();
     registerRoutes();
+
+    // 登录守卫：未登录时任何页面都回到登录页（保持可用的会话数据）
+    App2.Utils.bus.on('route', function (path) {
+      if (path !== '/auth' && path !== '/auth/register' && !App2.Store.getCurrentUser()) {
+        location.hash = '#/auth';
+      }
+    });
+
+    // 未登录 → 从登录页开始（避免首页闪一下再跳转）；注册页例外，保留直达链接
+    if (!App2.Store.getCurrentUser()) {
+      var h0 = location.hash;
+      if (h0 !== '#/auth' && h0 !== '#/auth/register') location.hash = '#/auth';
+    }
+
     App2.Router.start(document.getElementById('app'));
     App2.Timer.start();
     renderHeader();
@@ -92,11 +108,6 @@
     App2.Utils.bus.on('stars', renderHeader);
     App2.Utils.bus.on('progress', renderHeader);
     App2.Utils.bus.on('user', renderHeader);
-
-    // 首次使用（还没有任何学员）→ 欢迎取名
-    if (!App2.Store.getCurrentUser() && App2.Store.userCount() === 0) {
-      App2.UI.Components.welcomeModal();
-    }
 
     // 注册 Service Worker（仅 http/https：让手机/网页可「添加到主屏幕」并离线使用）。
     // Electron 的 file:// 及本地双击打开不满足 https，故自动跳过，不影响桌面版。
