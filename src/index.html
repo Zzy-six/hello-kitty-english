@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 手机端适配：禁止缩放，保持学习界面稳定 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#ff5c8a" />
+  <meta name="description" content="Kitty英语乐园 —— Hello Kitty粉色主题、面向零基础的趣味英语学习应用，完全离线可用" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Kitty英语" />
+  <title>Kitty英语乐园 · 开心学英语</title>
+
+  <!-- PWA：让手机浏览器能「添加到主屏幕 / 下载安装」为 App（见 manifest.json + sw.js） -->
+  <link rel="manifest" href="./manifest.json" />
+  <!-- 网站图标（原创SVG小猫 + 256px PNG 备用） -->
+  <link rel="icon" type="image/svg+xml" href="./assets/kitty-logo.svg" />
+  <link rel="icon" type="image/png" sizes="256x256" href="./assets/icon-256.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="./assets/icon-192.png" />
+
+  <!-- ============================================================
+       Tailwind CSS（已下载到本地 vendor 目录，完全离线可用）
+       ============================================================ -->
+  <script src="./vendor/tailwind.js"></script>
+  <!-- Tailwind 自定义主题：樱花粉品牌色板（kitty 色系全局可用） -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            kitty: {
+              50:  '#fff5f8',
+              100: '#ffe4ee',
+              200: '#ffc9db',
+              300: '#ffa6c4',
+              400: '#ff80ab',
+              500: '#ff5c8a',
+              600: '#f43f75',
+              700: '#d92d60',
+              800: '#b02a52',
+              900: '#8f2848'
+            },
+            cream: '#fff9f4',
+            mint:  '#c9f5df',
+            lemon: '#ffe9a8',
+            sky:   '#c9e7ff',
+            grape: '#e6d9ff'
+          },
+          boxShadow: {
+            kitty:    '0 10px 30px -8px rgba(244, 63, 117, 0.22)',
+            'kitty-lg': '0 20px 55px -12px rgba(244, 63, 117, 0.35)'
+          },
+          borderRadius: {
+            '4xl': '2rem',
+            '5xl': '2.75rem'
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- 项目自定义主题样式（动画 / 卡片 / 气泡 / 翻牌等，见 css/theme.css 注释） -->
+  <link rel="stylesheet" href="./css/theme.css" />
+</head>
+
+<body class="min-h-screen font-sans text-slate-700 antialiased select-none">
+  <!-- 樱花花瓣 + 爱心漂浮背景层（由 ui/decor.js 动态注入） -->
+  <div id="decor-layer" aria-hidden="true"></div>
+
+  <!-- ============================================================
+       顶部导航栏：Logo + 星星积分 + 学习者切换（app.js 渲染）
+       ============================================================ -->
+  <header id="app-header" class="sticky top-0 z-40"></header>
+
+  <!-- ============================================================
+       页面主体容器：所有功能页面（首页/闯关/对话/游戏/进度）
+       都由 features/*.js 挂载渲染到这个节点里
+       ============================================================ -->
+  <main id="app" class="relative z-10 mx-auto w-full max-w-5xl px-3 pb-16 pt-4 sm:px-5"></main>
+
+  <!-- ============================================================
+       脚本加载区（经典 script 全局命名空间模式，无需构建、双击即开）
+       加载顺序 = 依赖顺序，请勿随意调换：
+         core(基础设施) → data(词库) → ui(组件) → features(页面) → app(启动)
+       ============================================================ -->
+  <script src="./js/core/utils.js"></script>
+  <script src="./js/core/db.js"></script>
+  <script src="./js/core/store.js"></script>
+  <script src="./js/core/audio.js"></script>
+  <script src="./js/core/timer.js"></script>
+  <script src="./js/core/router.js"></script>
+
+  <script src="./js/data/words-data.js"></script>
+  <script src="./js/data/dialogues-data.js"></script>
+  <script src="./js/data/game-config.js"></script>
+
+  <script src="./js/ui/kitty.js"></script>
+  <script src="./js/ui/kitty3d.js"></script>
+  <script src="./js/ui/components.js"></script>
+  <script src="./js/ui/decor.js"></script>
+
+  <script src="./js/features/home.js"></script>
+  <script src="./js/features/quiz.js"></script>
+  <script src="./js/features/dialogue.js"></script>
+  <script src="./js/features/game.js"></script>
+  <script src="./js/features/progress.js"></script>
+
+  <script src="./js/app.js"></script>
+</body>
+</html>

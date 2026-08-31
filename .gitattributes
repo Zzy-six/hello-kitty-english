@@ -1,0 +1,4 @@
+# 仓库内统一使用 LF 换行（GitHub 友好），Windows 检出时自动转 CRLF
+* text=auto eol=lf
+*.png binary
+*.ico binary

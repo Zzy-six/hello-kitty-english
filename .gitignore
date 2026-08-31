@@ -1,0 +1,18 @@
+# 依赖（仅桌面打包需要，网页版零依赖）
+node_modules/
+
+# 打包产物
+dist/
+
+# 系统与编辑器
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# 本地临时文件
+*.tmp
+_*.png
+scripts/_tmp*.js

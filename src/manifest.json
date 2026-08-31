@@ -1,0 +1,33 @@
+{
+  "name": "Kitty英语乐园",
+  "short_name": "Kitty英语",
+  "description": "零成本、全离线、粉粉的 Kitty 主题英语学习乐园：初中到高中分级单词闯关 / 情景对话 / 单词小游戏 / 学习进度",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff9f4",
+  "theme_color": "#ff5c8a",
+  "icons": [
+    {
+      "src": "./assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

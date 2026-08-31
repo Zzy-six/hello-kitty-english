@@ -1,0 +1,365 @@
+/* ============================================================================
+   Kitty英语乐园 · 主题样式表
+   ----------------------------------------------------------------------------
+   本文件负责所有 Tailwind 覆盖不到的"手感"层：
+   1) 全局字体 / 背景 / 滚动条
+   2) 关键帧动画（漂浮、摇摆、弹出、掉落花瓣、星星爆裂、翻牌……）
+   3) 组件类（kitty 卡片、按钮、聊天气泡、记忆翻牌、反馈弹窗）
+   设计语言：樱花粉 + 奶油白 + 大圆角 + 轻柔动画
+   ============================================================================ */
+
+/* ---------- 1. 全局基础 ---------- */
+
+:root {
+  /* 品牌色变量：改这里即可全局换肤（ZyCode 迭代常用入口） */
+  --k-primary:   #ff5c8a;   /* 主粉 */
+  --k-primary-d: #d92d60;   /* 深粉 */
+  --k-bg-1:      #fff0f5;   /* 页面渐变起点 */
+  --k-bg-2:      #ffe0ec;   /* 页面渐变终点 */
+  --k-ink:       #7a3b52;   /* 樱花色文字 */
+}
+
+html { -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+  background: linear-gradient(160deg, var(--k-bg-1) 0%, var(--k-bg-2) 55%, #ffd9e8 100%);
+  background-attachment: fixed; /* 渐变固定，页面滚动时不闪 */
+  color: #6b3a4e;
+}
+
+/* 粉色系细滚动条 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #ffb1c9; border-radius: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- 2. 关键帧动画 ---------- */
+
+/* 轻柔上下漂浮（主视觉Kitty、入口图标） */
+@keyframes k-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+.animate-bob { animation: k-bob 3.2s ease-in-out infinite; }
+
+/* 挥手臂（SVG 内 transform-origin 已设到肩部） */
+@keyframes k-wave {
+  0%, 100% { transform: rotate(8deg); }
+  50%      { transform: rotate(-18deg); }
+}
+.kitty-arm-wave { animation: k-wave 1.6s ease-in-out infinite; transform-origin: 78% 30%; transform-box: fill-box; }
+
+/* 尾巴/蝴蝶结小摆动 */
+@keyframes k-wiggle {
+  0%, 100% { transform: rotate(-6deg); }
+  50%      { transform: rotate(6deg); }
+}
+.animate-wiggle { animation: k-wiggle 2.4s ease-in-out infinite; transform-origin: 50% 80%; }
+
+/* 弹出登场（卡片/弹窗） */
+@keyframes k-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop { animation: k-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* 上滑淡入（页面切换 / 列表项） */
+@keyframes k-fade-up {
+  from { transform: translateY(18px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.animate-fade-up { animation: k-fade-up 0.5s ease both; }
+
+/* 答错时的左右摇头 */
+@keyframes k-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-9px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(4px); }
+}
+.animate-shake { animation: k-shake 0.5s ease; }
+
+/* 开心跳跃（答对Kitty） */
+@keyframes k-jump {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30%      { transform: translateY(-16px) scale(1.04); }
+  60%      { transform: translateY(0) scale(0.98); }
+}
+.animate-jump { animation: k-jump 0.7s ease-in-out infinite; }
+
+/* 星星积分跳动 */
+@keyframes k-star-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.5) rotate(12deg); }
+  100% { transform: scale(1); }
+}
+.animate-star-pop { animation: k-star-pop 0.5s ease; }
+
+/* 说话按钮的声波扩散 */
+@keyframes k-sound {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 92, 138, 0.45); }
+  100% { box-shadow: 0 0 0 14px rgba(255, 92, 138, 0); }
+}
+.animate-sound { animation: k-sound 1.1s ease-out infinite; }
+
+/* 花瓣/爱心从上往下飘落（背景装饰） */
+@keyframes k-fall {
+  0%   { transform: translateY(-8vh) translateX(0) rotate(0deg); opacity: 0; }
+  10%  { opacity: var(--petal-opacity, 0.7); }
+  100% { transform: translateY(106vh) translateX(var(--petal-sway, 40px)) rotate(340deg); opacity: 0.15; }
+}
+
+/* 答对时星星/爱心爆裂粒子 */
+@keyframes k-burst {
+  0%   { transform: translate(0, 0) scale(0.4); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(1.15) rotate(200deg); opacity: 0; }
+}
+
+/* 聊天气泡登场 */
+@keyframes k-bubble-in {
+  0%   { transform: translateY(14px) scale(0.92); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+.animate-bubble { animation: k-bubble-in 0.35s ease both; }
+
+/* 消消乐卡片消除时缩小消失 */
+@keyframes k-vanish {
+  0%   { transform: scale(1); opacity: 1; }
+  55%  { transform: scale(1.18) rotate(6deg); opacity: 1; }
+  100% { transform: scale(0); opacity: 0; }
+}
+.animate-vanish { animation: k-vanish 0.5s ease both; }
+
+/* 进度条加载流光 */
+@keyframes k-shine {
+  0%   { background-position: -200px 0; }
+  100% { background-position: 260px 0; }
+}
+
+/* ---------- 3. 组件类 ---------- */
+
+/* 白色奶fufu卡片 */
+.kitty-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid #ffd3e1;
+  border-radius: 1.75rem;
+  box-shadow: 0 10px 30px -8px rgba(244, 63, 117, 0.18);
+  backdrop-filter: blur(6px);
+}
+/* 卡片悬浮手感（仅桌面端悬停生效） */
+@media (hover: hover) {
+  .kitty-card-hover { transition: transform .25s ease, box-shadow .25s ease; }
+  .kitty-card-hover:hover { transform: translateY(-6px) rotate(-0.5deg); box-shadow: 0 22px 46px -12px rgba(244, 63, 117, 0.32); }
+}
+
+/* 粉色主按钮 */
+.btn-kitty {
+  background: linear-gradient(135deg, #ff8fb2 0%, #ff5c8a 60%, #f43f75 100%);
+  color: #fff;
+  border-radius: 9999px;
+  font-weight: 700;
+  box-shadow: 0 8px 22px -6px rgba(244, 63, 117, 0.55), inset 0 -3px 0 rgba(0,0,0,0.06);
+  transition: transform .15s ease, filter .15s ease;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+}
+.btn-kitty:active { transform: scale(0.94); filter: brightness(1.05); }
+.btn-kitty:disabled { opacity: .55; pointer-events: none; }
+
+/* 白色描边副按钮 */
+.btn-ghost {
+  background: #fff;
+  color: var(--k-primary-d);
+  border: 2px solid #ffb9cd;
+  border-radius: 9999px;
+  font-weight: 700;
+  transition: transform .15s ease, background .15s ease;
+}
+.btn-ghost:active { transform: scale(0.94); background: #fff0f5; }
+
+/* 四选一选项按钮 */
+.option-btn {
+  background: #fff;
+  border: 2.5px solid #ffd3e1;
+  border-radius: 1.4rem;
+  font-weight: 700;
+  transition: transform .12s ease, border-color .15s ease, background .15s ease;
+}
+.option-btn:active { transform: scale(0.96); }
+.option-btn.correct {
+  border-color: #34c98e; background: #e8fff4; color: #0f8a5f;
+  animation: k-pop .4s ease;
+}
+.option-btn.wrong {
+  border-color: #ff6b6b; background: #fff0f0; color: #d43c3c;
+  animation: k-shake .5s ease;
+}
+
+/* 顶部标题栏毛玻璃 */
+.kitty-header {
+  background: rgba(255, 240, 246, 0.82);
+  backdrop-filter: blur(10px);
+  border-bottom: 2px solid rgba(255, 178, 204, 0.6);
+}
+
+/* 聊天气泡（对话页） */
+.bubble {
+  position: relative;
+  max-width: 82%;
+  padding: 0.7rem 1rem;
+  border-radius: 1.4rem;
+  line-height: 1.5;
+}
+.bubble-left  { background: #fff; border: 2px solid #ffd3e1; border-bottom-left-radius: .5rem; }
+.bubble-right { background: linear-gradient(135deg, #ffe1ec, #ffcadd); border: 2px solid #ffb3cb; border-bottom-right-radius: .5rem; }
+
+/* 消消乐翻牌 3D 结构 */
+.flip-scene { perspective: 700px; }
+.flip-inner {
+  position: relative; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  transition: transform .45s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+.flip-inner.is-flipped { transform: rotateY(180deg); }
+.flip-face {
+  position: absolute; inset: 0;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border-radius: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.flip-back {
+  background: linear-gradient(140deg, #ff8fb2, #f43f75);
+  border: 3px solid #ffd3e1;
+  box-shadow: inset 0 0 0 4px rgba(255,255,255,.35);
+}
+.flip-front {
+  transform: rotateY(180deg);
+  background: #fff;
+  border: 3px solid #ffc3d6;
+  flex-direction: column; gap: 2px;
+}
+/* 卡背蝴蝶结水印 */
+.flip-back .bow-watermark { opacity: .85; filter: drop-shadow(0 2px 2px rgba(143, 40, 72, .3)); }
+
+/* 学习时间柱状图 */
+.bar-chart .bar {
+  background: linear-gradient(180deg, #ff9ab8, #ff5c8a);
+  border-radius: 8px 8px 4px 4px;
+  min-height: 4px;
+  transition: height .8s cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+/* 樱花粉标题字 */
+.kitty-title {
+  color: var(--k-primary-d);
+  text-shadow: 0 2px 0 #fff, 0 4px 14px rgba(244, 63, 117, 0.25);
+  letter-spacing: 0.04em;
+}
+
+/* 全屏遮罩弹窗（Kitty反馈 / 用户管理） */
+.overlay {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(160, 60, 100, 0.28);
+  backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+
+/* 花瓣粒子（背景装饰元素） */
+.petal { position: fixed; top: 0; pointer-events: none; will-change: transform; z-index: 0; }
+
+/* 爆裂粒子（答对庆祝） */
+.burst-particle { position: fixed; pointer-events: none; z-index: 70; will-change: transform, opacity; }
+
+/* 单词详情行悬停 */
+.word-row { transition: background .15s ease, transform .15s ease; }
+.word-row:hover { background: #fff0f5; transform: translateX(3px); }
+
+/* 进度条轨道 */
+.track { background: #ffe0eb; border-radius: 999px; overflow: hidden; }
+.track .fill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff9ab8, #ff5c8a);
+  border-radius: 999px;
+  transition: width .7s ease;
+}
+
+/* 无动画偏好：尊重系统设置 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* ---------- 11. 3D 可拖拽立绘（ui/kitty3d.js） ---------- */
+
+/* 舞台：提供 3D 透视；触屏拖动时禁止整页滚动 */
+.kt-stage {
+  position: relative;
+  touch-action: none;          /* pointer 拖动时禁用手势滚动 */
+  -webkit-user-select: none;
+  user-select: none;
+  margin: 0 auto;
+}
+
+/* 柔光晕：立绘背后的粉白发光圆盘 */
+.kt-halo {
+  position: absolute; inset: -2%;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 58%,
+    rgba(255, 255, 255, 0.95) 0%,
+    rgba(255, 236, 244, 0.55) 42%,
+    rgba(255, 214, 232, 0.0) 72%);
+  z-index: 0;
+}
+
+/* 影子：脚下的椭圆阴影，拖动时被 JS 缩放/偏移 */
+.kt-shadow {
+  position: absolute; left: 50%; bottom: -6px;
+  width: 58%; height: 26px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center,
+    rgba(219, 84, 136, 0.38) 0%, rgba(219, 84, 136, 0) 68%);
+  filter: blur(3px);
+  pointer-events: none;
+  transition: opacity .25s ease;
+  z-index: 1;
+}
+
+/* 可拖拽层：弹性回位的 spring 缓动 */
+.kt-drag {
+  position: relative; z-index: 2;
+  transform-style: preserve-3d;
+  will-change: transform;
+  transition: transform 0.65s cubic-bezier(0.22, 1.61, 0.36, 1), filter 0.25s ease;
+  cursor: grab;
+}
+.kt-drag:active, .kt-drag.kt-hold { cursor: grabbing; }
+/* 拖动中：取消过渡，跟手；拖起时加一点"上浮光晕" */
+.kt-drag.kt-hold { transition: none; filter: drop-shadow(0 14px 18px rgba(255, 92, 138, 0.22)); }
+.kt-drag:hover { filter: drop-shadow(0 8px 12px rgba(255, 92, 138, 0.18)); }
+
+/* 漂浮层：平时上下漂浮（拖动时被 .kt-hold 停掉，避免跟手时抖动） */
+.kt-bob { animation: k-bob 3.2s ease-in-out infinite; }
+.kt-hold .kt-bob { animation-play-state: paused; }
+
+/* 立绘本体：拖起来时禁止图片原生拖拽已由 draggable=false 处理 */
+.kt-cat { display: block; pointer-events: none; }
+
+/* 提示条：首次引导文字，拖动后自动隐藏（JS 控制） */
+.kt-hint {
+  position: absolute; left: 50%; bottom: -30px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 11px; font-weight: 700;
+  color: #c2698b;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 158, 190, 0.55);
+  padding: 4px 12px;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(255, 92, 138, 0.12);
+  transition: opacity .5s ease, transform .5s ease;
+  z-index: 3;
+  pointer-events: none;
+}
+.kt-hint.kt-hidden { opacity: 0; transform: translateX(-50%) translateY(6px); }

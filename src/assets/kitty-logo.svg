@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 190">
+  <!-- Kitty 英语乐园 favicon：原创白猫+粉蝴蝶结（非 Sanrio 官方形象，可商用） -->
+  <!-- 耳朵 -->
+  <path d="M48 62 L36 12 L88 40 Z" fill="#ffffff" stroke="#f2b4c6" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M152 62 L164 12 L112 40 Z" fill="#ffffff" stroke="#f2b4c6" stroke-width="6" stroke-linejoin="round"/>
+  <!-- 脑袋 -->
+  <ellipse cx="100" cy="98" rx="78" ry="62" fill="#ffffff" stroke="#f2b4c6" stroke-width="6"/>
+  <!-- 左耳蝴蝶结 -->
+  <g stroke="#e6396c" stroke-width="4">
+    <ellipse cx="74" cy="20" rx="14" ry="9.5" fill="#ffe1ec" transform="rotate(-22 74 20)"/>
+    <ellipse cx="94" cy="20" rx="14" ry="9.5" fill="#ff9ab8" transform="rotate(22 94 20)"/>
+    <circle cx="84" cy="22" r="6.5" fill="#ff4d7d"/>
+  </g>
+  <!-- 胡须 -->
+  <g stroke="#c9a2b4" stroke-width="4" stroke-linecap="round">
+    <path d="M48 86 L8 78"/><path d="M48 96 L8 96"/><path d="M48 106 L8 114"/>
+    <path d="M152 86 L192 78"/><path d="M152 96 L192 96"/><path d="M152 106 L192 114"/>
+  </g>
+  <!-- 眼睛：黑豆眼 -->
+  <ellipse cx="75" cy="92" rx="4.5" ry="6" fill="#333"/>
+  <ellipse cx="125" cy="92" rx="4.5" ry="6" fill="#333"/>
+  <!-- 鼻子 -->
+  <ellipse cx="100" cy="104" rx="4.5" ry="3.5" fill="#ffd35c"/>
+</svg>
