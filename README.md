@@ -70,6 +70,16 @@ hello-kitty-english/
 
 ## 🚀 怎么运行
 
+### 方式零：直接下载 Windows 版（推荐，无需电脑、无需安装任何东西）
+
+点下面链接进「Releases」页，直接下载 exe 双击即用（不需要安装 Node.js / 不需要打包）：
+
+- **📦 下载页：<https://github.com/Zzy-six/hello-kitty-english/releases>**
+  - `KittyEnglishGarden-Setup-…exe` — 安装版（有开始菜单/桌面图标，推荐）
+  - `KittyEnglishGarden-Portable-…exe` — 便携版（绿色单文件，拷贝到 U 盘也能用）
+
+> exe 下载后**断网也能用**，数据存本机，不交任何费用、不上传任何信息。
+
 ### 方式一：网页版（浏览器直接打开也行，但推荐本地服务器）
 
 ```bash
