@@ -2,14 +2,15 @@
  * core/audio.js — 英语发音（TTS）+ 趣味音效（WebAudio 合成）
  * ----------------------------------------------------------------------------
  * 1) speak(text)：使用浏览器 SpeechSynthesis 引擎朗读英文，声音策略：
- *    · 自动挑“最像真人”的语音：自然语音（Edge/Chrome 的
- *      Microsoft Aria/Jenny Online (Natural)、Neural 等）优先，
- *      其次本地英文语音（断网也能读），最后才用默认语音。
+ *    · 自动挑“最像真人的女声”：自然英文女声（Edge/Chrome 的
+ *      Microsoft Aria/Jenny/Michelle Online (Natural) 等）最优先，
+ *      其次性别未知的自然语音、本地英文女声、自然男声，
+ *      最后才用默认语音——总之女生优先、真人优先、不机械最优先。
  *    · “跟读两遍”：先常速念一遍，再慢速重念一遍，零基础更容易听清；
  *      可通过“学习进度中心 → 朗读设置”关闭。
  *    · 声音/语速/跟读偏好存 localStorage（kitty.audioPrefs）。
- *    · 完全免费：网页版在 Edge/Chrome 上连网自动用自然语音；
- *      Windows 可在“设置→时间和语言→语音”免费安装离线自然语音包。
+ *    · 完全免费：网页版在 Edge/Chrome 上连网自动用「真人女声」自然语音；
+ *      Windows 可在“设置→时间和语言→语音”免费安装离线自然语音包（女生）。
  * 2) chime(name)：用 WebAudio 振荡器现场合成音效，无需任何音频文件。
  * ============================================================================ */
 (function (Audio) {
@@ -69,12 +70,42 @@
     return /online\s*\(natural\)|natural|neural|premium/i.test(v.name || '');
   }
 
-  /** 声音质量档位：0 自然 > 1 本地英文 > 2 在线英文 > 99 非英文 */
+  /**
+   * 女性英文语音判定（按语音名字典，大小写不敏感）。
+   * 覆盖 Edge/Windows 离线自然包（Aria/Jenny/Michelle/Ana/Libby/Sonia/
+   * Maisie/Ava/Natasha/Neerja 等）、经典本地声（Zira/Samantha/Karen/Hazel
+   * 等）与常见第三方语音（Salli/Joanna/Amy/Emma 等）。
+   */
+  var FEMALE_RE =
+    /(?:\b|^)(aria|jenny|michelle|ana|libby|sonia|maisie|ava|natasha|neerja|zira|samantha|karen|moira|tessa|victoria|susan|catherine|katharine|kate|carol|ellen|salli|joanna|maya|sofia|sophia|amy|emma|olivia|nicole|kendra|ivy|linda|heather|hazel|helen|callie|marissa|alice|clara|hannah|emily|jane|lucy|luna|vicki|tracy|emily|eloquence)(?:\b|$)/i;
+
+  /** 男性英文语音判定：明确是男声的名字（David/Mark/Guy/George 等） */
+  var MALE_RE =
+    /(?:\b|^)(david|mark|guy|ryan|george|james|ben|jacob|sean|shaun|thomas|harry|daniel|eric|christopher|paul|peter|todd|steve|aaron|andrew|brian|bruce|fred|gary|jason|michael|nick|raymond|roger|richard|joshua|nathan|alex|william|will|connor|liam|oliver|edward|stephen|matthew|joey|justin|kevin|geraint|russell|gregory|cruze|kamil|felix|ramon|prabhat|ravi|heera|frederik)(?:\b|$)/i;
+
+  function isFemaleVoice(v) { return FEMALE_RE.test(v.name || ''); }
+  function isMaleVoice(v)   { return MALE_RE.test(v.name || ''); }
+
+  /**
+   * 声音质量档位（数字越小越优先）：
+   * 0 自然·女声 > 1 自然·性别未知 > 2 本地·女声 > 3 自然·男声
+   * > 4 本地·性别未知 > 5 本地·男声 > 6 在线·女声 > 7 在线·其他 > 8 在线·男声
+   * > 99 非英文
+   */
   function voiceTier(v) {
     if (!/^en-?/i.test(v.lang || '')) return 99;
-    if (isNaturalVoice(v)) return 0;
-    if (v.localService) return 1;
-    return 2;
+    var natural = isNaturalVoice(v);
+    var female = isFemaleVoice(v);
+    var male = isMaleVoice(v);
+    if (natural && female) return 0;
+    if (natural && !male) return 1;
+    if (female && v.localService) return 2;
+    if (natural && male) return 3;
+    if (!male && v.localService) return 4;
+    if (male && v.localService) return 5;
+    if (female) return 6;
+    if (!male) return 7;
+    return 8;
   }
 
   function pickVoice() {
@@ -97,7 +128,7 @@
     synth.onvoiceschanged = pickVoice;
   }
 
-  /** 全部英文语音列表（供“朗读设置”面板），按质量档位排序 */
+  /** 全部英文语音列表（供“朗读设置”面板），按自动选择优先级排序 */
   Audio.getVoiceList = function () {
     var voices = synth ? (synth.getVoices() || []) : [];
     var list = voices
@@ -107,11 +138,15 @@
           name: v.name,
           lang: v.lang,
           local: !!v.localService,
-          natural: isNaturalVoice(v)
+          natural: isNaturalVoice(v),
+          female: isFemaleVoice(v),
+          male: isMaleVoice(v)
         };
       })
       .sort(function (a, b) {
-        return (b.natural - a.natural) || (b.local - a.local) || a.name.localeCompare(b.name);
+        var ta = voiceTier({ name: a.name, lang: a.lang, localService: a.local, female: a.female, male: a.male });
+        var tb = voiceTier({ name: b.name, lang: b.lang, localService: b.local, female: b.female, male: b.male });
+        return (ta - tb) || a.name.localeCompare(b.name);
       });
     return list;
   };

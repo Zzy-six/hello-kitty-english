@@ -1,7 +1,7 @@
 {
   "name": "kitty-english-garden",
   "productName": "Kitty英语乐园",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "零成本、全离线、完全免费的 Kitty 粉主题英语学习应用：小学一年级到高三分级单词闯关 + 情景对话 + 单词游戏（网页版 + Windows 桌面 exe 双端交付）",
   "main": "electron/main.js",
   "author": "Kitty English Garden Team",

@@ -9,7 +9,7 @@
  * ============================================================================ */
 'use strict';
 
-var VERSION = 'kitty-english-v3';
+var VERSION = 'kitty-english-v4';
 var CACHE = VERSION;
 
 // 需要预先缓存的核心资源（URL 相对 sw.js 所在目录）

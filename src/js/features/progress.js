@@ -295,12 +295,21 @@
    * 朗读设置面板：选声音 / 选语速 / 跟读两遍，偏好存 localStorage（kitty.audioPrefs）。
    * 语音列表来自 core/audio.js 的 getVoiceList()，按“自然语音 > 本地英文”排好序。
    * ============================================================================ */
+  function voiceTag(v) {
+    if (v.natural && v.female) return '👑♀';   // 至尊：自然·真人女声
+    if (v.natural) return v.male ? '👑♂' : '👑'; // 自然语音（♂ 已知男声 / 未知性别）
+    if (v.female) return v.local ? '💾♀' : '🌐♀'; // 女声无自然标签
+    if (v.local) return '💾';                    // 本地语音
+    return '🌐';
+  }
+
   function buildVoiceOptions(list) {
-    return '<option value="">✨ 自动推荐（最像真人的声音）</option>' +
+    return '<option value="">✨ 自动推荐（真人女声优先，最像真人）</option>' +
       list.map(function (v) {
-        var tag = v.natural ? '👑' : (v.local ? '💾' : '🌐');
+        var tag = voiceTag(v);
+        var genderTip = v.female ? '（女声）' : (v.male ? '（男声）' : '');
         return '<option value="' + App2.Utils.esc(v.name) + '"' +
-          (App2.Audio.getPrefs().voice === v.name ? ' selected' : '') + '>' + tag + ' ' + App2.Utils.esc(v.name) + '</option>';
+          (App2.Audio.getPrefs().voice === v.name ? ' selected' : '') + '>' + tag + ' ' + App2.Utils.esc(v.name) + genderTip + '</option>';
       }).join('');
   }
 
@@ -335,8 +344,8 @@
             '<span id="k-audio-note" class="text-xs font-bold text-emerald-500"></span>' +
           '</div>' + noVoiceNote +
           '<div class="rounded-2xl bg-kitty-50 px-4 py-3 text-[11px] leading-5 text-slate-500">' +
-            '<div>👑「自然语音」声线最接近真人（Edge / Chrome 的 Microsoft Aria、Jenny 等，完全免费，联网时优先）；💾「本地语音」断网也能朗读。选中后立即生效，想听效果点「试听」。</div>' +
-            '<div class="mt-1">想要<b>断网也接近真人</b>的发音？Windows 打开「设置 → 时间和语言 → 语音 → 添加语音」，免费安装英文自然语音包（如 Microsoft Aria），重启应用后自动优先使用，完全不花钱。</div>' +
+            '<div>系统会自动优先选<b>女生的真人声</b>:👑♀「自然语音」（Edge / Chrome 的 Microsoft Aria、Jenny、Michelle 等，完全免费，联网时优先）；💾「本地语音」断网也能朗读。选中后立即生效，想听效果点「试听」。</div>' +
+            '<div class="mt-1">想要<b>断网也接近真人女声</b>的发音？Windows 打开「设置 → 时间和语言 → 语音 → 添加语音」，免费安装英文自然语音包（如 Microsoft Aria / Jenny，都是女声），重启应用后自动优先使用，完全不花钱。</div>' +
           '</div>' +
         '</div>' +
       '</div>';
