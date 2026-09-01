@@ -30,7 +30,7 @@
     return { learned: learned, total: words.length };
   }
 
-  /** 解锁规则：七年级默认解锁；其余需上一级已学单词 ≥ 60% */
+  /** 解锁规则：一年级默认解锁；其余需上一级已学单词 ≥ 60% */
   function isUnlocked(lvId) {
     if (lvId <= 1) return true;
     var prev = levelProgress(lvId - 1);
@@ -75,12 +75,12 @@
         App2.UI.Components.pageHeader('单词闯关', '#/home', '答对得星星 ⭐') +
         '<div class="mt-3 flex items-center gap-3 rounded-2xl bg-white/70 px-4 py-3 text-sm text-slate-500">' +
           '<span class="text-xl">🎯</span>' +
-          '<span>按<b class="text-kitty-500">初中到高中</b>一个年级一个年级地学：每级 4 个主题、32 个单词，' +
+          '<span>按<b class="text-kitty-500">一年级到高三</b>一个年级一个年级地学：每级 4 个主题、32 个单词，' +
           '每轮 10 题，连续答对 3 题有<b class="text-kitty-500">星星加倍奖励</b>！</span>' +
         '</div>' +
         '<div class="mt-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">' + cards + '</div>' +
         '<div class="mt-4">' +
-          '<button data-cat="all" class="btn-kitty w-full py-3.5">🎊 全库总复习大挑战（192 词）</button>' +
+          '<button data-cat="all" class="btn-kitty w-full py-3.5">🎊 全库总复习大挑战（384 词）</button>' +
         '</div>' +
       '</div>';
 
@@ -323,7 +323,7 @@
             desc: '真棒！顺带听一遍发音吧~', wordHtml: wordHtml, autoClose: 1700 }
         : { mood: 'sad', title: '再想一想～', desc: '记住它，下次一定对！', wordHtml: wordHtml, autoClose: 2100 };
 
-      App2.Audio.speak(q.word.en, { rate: 0.8 });
+      App2.Audio.speak(q.word.en);
 
       activeModal = App2.UI.Components.feedback(info);
       activeModal.then(function () {

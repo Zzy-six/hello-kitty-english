@@ -1,12 +1,16 @@
 /* ============================================================================
  * core/audio.js — 英语发音（TTS）+ 趣味音效（WebAudio 合成）
  * ----------------------------------------------------------------------------
- * 1) speak(text)：使用浏览器内置 SpeechSynthesis 引擎朗读英文。
- *    · 完全免费、无需任何 API 密钥、Electron/Chrome/Edge 下离线可用
- *      （Windows 自带 Microsoft 本地语音，断网也能发音）。
- *    · 自动挑选英文语音，找不到时仍用默认语音 + en-US 标记尝试。
- * 2) chime(name)：用 WebAudio 振荡器现场合成音效（答对/答错/点击/通关），
- *    无需任何音频文件，天然离线。
+ * 1) speak(text)：使用浏览器 SpeechSynthesis 引擎朗读英文，声音策略：
+ *    · 自动挑“最像真人”的语音：自然语音（Edge/Chrome 的
+ *      Microsoft Aria/Jenny Online (Natural)、Neural 等）优先，
+ *      其次本地英文语音（断网也能读），最后才用默认语音。
+ *    · “跟读两遍”：先常速念一遍，再慢速重念一遍，零基础更容易听清；
+ *      可通过“学习进度中心 → 朗读设置”关闭。
+ *    · 声音/语速/跟读偏好存 localStorage（kitty.audioPrefs）。
+ *    · 完全免费：网页版在 Edge/Chrome 上连网自动用自然语音；
+ *      Windows 可在“设置→时间和语言→语音”免费安装离线自然语音包。
+ * 2) chime(name)：用 WebAudio 振荡器现场合成音效，无需任何音频文件。
  * ============================================================================ */
 (function (Audio) {
   'use strict';
@@ -14,51 +18,162 @@
   var synth = window.speechSynthesis || null;
   var enVoice = null;
   var audioCtx = null;   // 惰性创建，首次用户手势后解锁
-  var speaking = false;
+  var queue = [];        // 待读队列（跟读两遍时压入两段）
+  var active = null;     // 当前正在读的 utterance
+  var pauseTimer = null; // 两遍之间的停顿计时器
+  var speaking = false;  // 是否正在朗读（含队列中未读的）
+
+  /* ---------- 朗读偏好（localStorage 持久化） ---------- */
+
+  var PREFS_KEY = 'kitty.audioPrefs';
+  var DEFAULT_PREFS = { voice: '', rate: 0.8, repeat: true };
+
+  function loadPrefs() {
+    var p = { voice: '', rate: 0.8, repeat: true };
+    try {
+      var raw = localStorage.getItem(PREFS_KEY);
+      if (raw) {
+        var saved = JSON.parse(raw);
+        p.voice = typeof saved.voice === 'string' ? saved.voice : '';
+        p.rate = (typeof saved.rate === 'number' && saved.rate >= 0.5 && saved.rate <= 1.2)
+          ? saved.rate : 0.8;
+        p.repeat = typeof saved.repeat === 'boolean' ? saved.repeat : true;
+      }
+    } catch (e) { /* 损坏则用默认 */ }
+    return p;
+  }
+  var prefs = loadPrefs();
+
+  /** 保存朗读偏好并立即生效 */
+  Audio.savePrefs = function (next) {
+    prefs = {
+      voice: String(next.voice || ''),
+      rate: (Number(next.rate) >= 0.5 && Number(next.rate) <= 1.2) ? Number(next.rate) : 0.8,
+      repeat: !!next.repeat
+    };
+    try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch (e) { /* 隐私模式忽略 */ }
+    pickVoice();
+    return prefs;
+  };
+  /** 当前偏好 */
+  Audio.getPrefs = function () { return prefs; };
+  /** 用户是否手动保存过偏好 */
+  Audio.hasSavedPrefs = function () {
+    try { return !!localStorage.getItem(PREFS_KEY); } catch (e) { return false; }
+  };
 
   /* ---------- 语音选择 ---------- */
+
+  /** 自然语音：名字带 Online (Natural)/Neural/Premium，声线最接近真人 */
+  function isNaturalVoice(v) {
+    return /online\s*\(natural\)|natural|neural|premium/i.test(v.name || '');
+  }
+
+  /** 声音质量档位：0 自然 > 1 本地英文 > 2 在线英文 > 99 非英文 */
+  function voiceTier(v) {
+    if (!/^en-?/i.test(v.lang || '')) return 99;
+    if (isNaturalVoice(v)) return 0;
+    if (v.localService) return 1;
+    return 2;
+  }
 
   function pickVoice() {
     if (!synth) return;
     var voices = synth.getVoices() || [];
     if (!voices.length) return; // 异步加载中，等 voiceschanged 再试
-    // 优先级：本地英文语音 > Google英文 > 任意英文 > 默认
-    enVoice =
-      voices.find(function (v) { return /^en[-_]/i.test(v.lang) && v.localService; }) ||
-      voices.find(function (v) { return /english/i.test(v.name); }) ||
-      voices.find(function (v) { return /^en[-_]/i.test(v.lang); }) ||
-      null;
+    enVoice = null;
+    if (prefs.voice) {
+      enVoice = voices.find(function (v) { return v.name === prefs.voice; }) || null;
+    } else {
+      var tier = 99;
+      voices.forEach(function (v) {
+        var t = voiceTier(v);
+        if (t < tier) { tier = t; enVoice = v; }
+      });
+    }
   }
   if (synth) {
     pickVoice();
     synth.onvoiceschanged = pickVoice;
   }
 
+  /** 全部英文语音列表（供“朗读设置”面板），按质量档位排序 */
+  Audio.getVoiceList = function () {
+    var voices = synth ? (synth.getVoices() || []) : [];
+    var list = voices
+      .filter(function (v) { return /^en-?/i.test(v.lang || ''); })
+      .map(function (v) {
+        return {
+          name: v.name,
+          lang: v.lang,
+          local: !!v.localService,
+          natural: isNaturalVoice(v)
+        };
+      })
+      .sort(function (a, b) {
+        return (b.natural - a.natural) || (b.local - a.local) || a.name.localeCompare(b.name);
+      });
+    return list;
+  };
+
+  /* ---------- 朗读（支持跟读两遍） ---------- */
+
+  function stopAll() {
+    if (pauseTimer) { clearTimeout(pauseTimer); pauseTimer = null; }
+    queue.length = 0;
+    active = null;
+    if (synth) { try { synth.cancel(); } catch (e) {} }
+    speaking = false;
+  }
+
+  function mkUtter(text, rate, pitch) {
+    var u = new SpeechSynthesisUtterance(String(text));
+    u.lang = 'en-US';
+    u.rate = rate;
+    u.pitch = pitch;
+    if (enVoice) u.voice = enVoice;
+    return u;
+  }
+
+  /** 依次播放队列中的下一段 */
+  function speakNext() {
+    if (active || !queue.length || !synth) return;
+    var u = queue.shift();
+    active = u;
+    u.onstart = function () { speaking = true; };
+    u.onend = u.onerror = function () {
+      if (active !== u) return;           // 已被新朗读打断，忽略迟到回调
+      active = null;
+      if (queue.length) {
+        pauseTimer = setTimeout(speakNext, 240); // 两遍之间留点停顿
+      } else {
+        speaking = false;
+      }
+    };
+    try { synth.speak(u); } catch (e) { active = null; speaking = false; }
+  }
+
   /**
    * 朗读英文单词/句子
-   * @param {string} text   要朗读的英文
-   * @param {object} [opts] { rate: 语速(默认0.85适合零基础), pitch: 音调 }
+   * @param {string} text 要朗读的英文
+   * @param {object} [opts] { rate: 临时语速, repeat: 跟读两遍(默认取用户偏好) }
    */
   Audio.speak = function (text, opts) {
     opts = opts || {};
     if (!synth || !text) return;
-    try {
-      synth.cancel(); // 打断上一次，避免排队延迟
-      var u = new SpeechSynthesisUtterance(String(text));
-      u.lang = 'en-US';
-      u.rate = opts.rate || 0.85;   // 放慢语速，零基础友好
-      u.pitch = opts.pitch || 1.15; // 稍高音调更童趣
-      if (enVoice) u.voice = enVoice;
-      u.onstart = function () { speaking = true; };
-      u.onend = u.onerror = function () { speaking = false; };
-      synth.speak(u);
-    } catch (e) { /* 发音失败不影响学习流程 */ }
+    stopAll();
+    var rate = (typeof opts.rate === 'number' && opts.rate >= 0.5) ? opts.rate : prefs.rate;
+    var repeat = (opts.repeat === undefined) ? prefs.repeat : !!opts.repeat;
+    queue.push(mkUtter(text, rate, 1.1));
+    if (repeat) queue.push(mkUtter(text, Math.max(0.5, rate - 0.25), 1.0));
+    speaking = true;
+    speakNext();
   };
 
-  /** 是否正在朗读 */
+  /** 是否正在朗读（含队列中未读的） */
   Audio.isSpeaking = function () { return speaking; };
   /** 停止朗读 */
-  Audio.stop = function () { if (synth) { try { synth.cancel(); } catch (e) {} } speaking = false; };
+  Audio.stop = stopAll;
 
   /* ---------- WebAudio 音效合成 ---------- */
 

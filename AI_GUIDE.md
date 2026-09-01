@@ -6,7 +6,7 @@
 
 ## 一句话定位
 
-零成本（无付费 API、无服务器、无构建）、纯静态 HTML+JS 的初中→高中分级英语学习应用：
+零成本（无付费 API、无服务器、无构建）、纯静态 HTML+JS 的**一年级→高三分级**英语学习应用：
 网页版（GitHub Pages）+ 桌面版（Electron）双交付，全部内容在 `src/`，离线可用。
 
 ## 架构铁律（违反必出 bug）
@@ -32,7 +32,7 @@
 | 注册/登录/登出 | `Store.register(用户名, 密码, 昵称, 头像)` / `Store.login(u, p)` / `Store.logout()`（失败均 Promise.reject 中文错误） |
 | 账号管理 | `Store.listUsers()` / `enter(id)` / `deleteUser(id)` / `verifyPassword(pwd)` / `isAdmin()`（返回 Promise） |
 | 旧版无账号入口 | `Store.addUser(name)` 是遗留 API，新功能别用 |
-| 词表 | `App.Data.Words.list(catId)` → 数组；`byCategory(id)` → 分类对象；`levels` → 6个等级；`byLevel(id)` → **某等级的类别数组**（不是等级对象）；`listByLevel(id)` → 某等级全部单词 |
+| 词表 | `App.Data.Words.list(catId)` → 数组；`byCategory(id)` → 分类对象；`levels` → 12个等级（1=一年级…12=高三）；`byLevel(id)` → **某等级的类别数组**（不是等级对象）；`listByLevel(id)` → 某等级全部单词 |
 | 关卡 | `App.Data.GameConfig.byId(n)`（安全返回 null，勿加默认可掩盖 bug） |
 | 顶栏星星 | 事件 `App.Utils.bus.emit('stars', ...)`，页面监听刷新 |
 | 发音 | `App.Utils.speak('Cat')`（SpeechSynthesis） |

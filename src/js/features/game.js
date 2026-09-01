@@ -19,9 +19,9 @@
   function poolFor(level) {
     var W = App2.Data.Words;
     var source = level.source || '';
-    if (source === 'l1') return W.listByLevel(1);
-    if (source === 'l2') return W.listByLevel(2).concat(W.listByLevel(3));
-    if (source === 'l3') return W.listByLevel(4).concat(W.listByLevel(5)).concat(W.listByLevel(6));
+    if (source === 'l1') return W.listByLevel(1).concat(W.listByLevel(2));
+    if (source === 'l2') return W.listByLevel(7).concat(W.listByLevel(8)).concat(W.listByLevel(9));
+    if (source === 'l3') return W.listByLevel(10).concat(W.listByLevel(11)).concat(W.listByLevel(12));
     return W.list('all');
   }
 
@@ -156,7 +156,7 @@
           foundEl.textContent = found;
           App2.Audio.chime('correct');
           App2.UI.Components.celebrate(6);
-          App2.Audio.speak(word.en, { rate: 0.8 });
+          App2.Audio.speak(word.en);
           first = null;
           lock = false;
           if (found >= pairs) setTimeout(win, 700);

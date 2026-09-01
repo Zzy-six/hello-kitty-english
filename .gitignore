@@ -16,3 +16,6 @@ Desktop.ini
 *.tmp
 _*.png
 scripts/_tmp*.js
+
+# 离线交付包(不进入仓库)
+*.zip

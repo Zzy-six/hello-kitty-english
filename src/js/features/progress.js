@@ -2,7 +2,7 @@
  * features/progress.js — 学习进度中心
  * ----------------------------------------------------------------------------
  * 展示：个人卡片(称号+头像)、星星/已学单词/正确率/学习天数、
- *       近7天学习时长柱状图、分级掌握度进度条(七年级→高三)、单词列表(带筛选/发音)、
+ *       近7天学习时长柱状图、分级掌握度进度条(一年级→高三)、单词列表(带筛选/发音)、
  *       数据管理(账号管理、换设备同步、重置进度)、存储方式提示。
  * 所有数据来自 core/store.js 的 IndexedDB 持久化（★ 数据层增改见 Store）。
  * ============================================================================ */
@@ -88,7 +88,7 @@
         '<div class="flex items-end gap-1.5 sm:gap-2">' + barHtml + '</div>' +
       '</div>';
 
-    /* —— 分级掌握度（按年级分组：七年级 → 高三） —— */
+    /* —— 分级掌握度（按年级分组：一年级 → 高三） —— */
     var catHtml = App2.Data.Words.levels.map(function (lv) {
       var cats = App2.Data.Words.byLevel(lv.id) || [];
       var rows = cats.map(function (c) {
@@ -156,6 +156,9 @@
         '<div class="max-h-80 space-y-1.5 overflow-y-auto pr-1" id="k-words">' + rows + '</div>' +
       '</div>';
 
+    /* —— 朗读设置 —— */
+    var audioCard = buildAudioCard();
+
     /* —— 数据管理 —— */
     var fallbackNote = App2.DB.isFallback()
       ? '<div class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-600">⚠️ 当前浏览器不支持 IndexedDB，已自动改用 localStorage 保存（功能一致，但存储量较小且不建议用于正式学习）。</div>'
@@ -187,7 +190,7 @@
             '<div class="mt-1 text-xs text-slate-400">注册于 ' + fmtDate(user.createdAt) + ' · 坚持下去，你会越来越棒！</div>' +
           '</div>' +
         '</div>' +
-        stats + week + mastery + wordList + manage +
+        stats + week + mastery + wordList + audioCard + manage +
       '</div>';
 
     App2.Utils.render(container, html);
@@ -196,7 +199,7 @@
     // 单词发音
     container.querySelectorAll('[data-speak]').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        App2.Audio.speak(btn.getAttribute('data-speak'), { rate: 0.85 });
+        App2.Audio.speak(btn.getAttribute('data-speak'));
       });
     });
     // 筛选
@@ -212,6 +215,37 @@
         });
       });
     });
+    // 朗读设置：改动即保存并生效（声音/语速/跟读）
+    var voiceSel = container.querySelector('#k-audio-voice');
+    var rateSel = container.querySelector('#k-audio-rate');
+    var repeatChk = container.querySelector('#k-audio-repeat');
+    var audioNote = container.querySelector('#k-audio-note');
+    if (voiceSel) {
+      var saveAudioPrefs = function () {
+        if (!voiceSel) return;
+        App2.Audio.savePrefs({
+          voice: voiceSel.value,
+          rate: Number(rateSel.value),
+          repeat: repeatChk.checked
+        });
+        audioNote.textContent = '已保存 ✓ 点「试听」听听新效果';
+        setTimeout(function () { audioNote.textContent = ''; }, 2600);
+      };
+      [voiceSel, rateSel, repeatChk].forEach(function (el) {
+        el.addEventListener('change', function () { App2.Audio.chime('click'); saveAudioPrefs(); });
+      });
+      container.querySelector('#k-audio-test').addEventListener('click', function () {
+        App2.Audio.chime('click');
+        App2.Audio.speak('Hello! Nice to meet you! Let us learn English together.');
+      });
+      var rescanBtn = container.querySelector('#k-audio-rescan');
+      if (rescanBtn) rescanBtn.addEventListener('click', function () {
+        var list = App2.Audio.getVoiceList();
+        voiceSel.innerHTML = buildVoiceOptions(list);
+        audioNote.textContent = list.length ? ('已检测到 ' + list.length + ' 个英文语音 ✓') : '仍未检测到英文语音';
+        App2.Audio.chime('click');
+      });
+    }
     // 学员管理
     container.querySelector('#k-users').addEventListener('click', function () {
       App2.UI.Components.userModal();
@@ -255,6 +289,57 @@
   function filterBtnClsRaw(key, active) {
     return 'rounded-full px-3 py-1 text-xs font-bold transition ' +
       (active ? 'bg-kitty-500 text-white shadow-kitty' : 'bg-slate-100 text-slate-500 hover:bg-kitty-100');
+  }
+
+  /* ============================================================================
+   * 朗读设置面板：选声音 / 选语速 / 跟读两遍，偏好存 localStorage（kitty.audioPrefs）。
+   * 语音列表来自 core/audio.js 的 getVoiceList()，按“自然语音 > 本地英文”排好序。
+   * ============================================================================ */
+  function buildVoiceOptions(list) {
+    return '<option value="">✨ 自动推荐（最像真人的声音）</option>' +
+      list.map(function (v) {
+        var tag = v.natural ? '👑' : (v.local ? '💾' : '🌐');
+        return '<option value="' + App2.Utils.esc(v.name) + '"' +
+          (App2.Audio.getPrefs().voice === v.name ? ' selected' : '') + '>' + tag + ' ' + App2.Utils.esc(v.name) + '</option>';
+      }).join('');
+  }
+
+  function buildAudioCard() {
+    var prefs = App2.Audio.getPrefs();
+    var voices = App2.Audio.getVoiceList();
+    var scale = { 0.65: '🐢 慢速（最清晰）', 0.8: '🐰 标准（推荐）', 1: '🐇 稍快' };
+    var rateSel = Object.keys(scale).map(function (r) {
+      return '<option value="' + r + '"' + (Number(prefs.rate) === Number(r) ? ' selected' : '') + '>' + scale[r] + '</option>';
+    }).join('');
+    var noVoiceNote = voices.length === 0
+      ? '<div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-600">⚠️ 当前没有检测到英文语音，朗读会用系统默认声音。点下方「重新检测」，或按提示免费安装 Windows 英文语音包后重启应用。<button id="k-audio-rescan" class="ml-2 rounded-full bg-amber-100 px-3 py-1 font-bold">🔄 重新检测</button></div>'
+      : '';
+
+    return '' +
+      '<div class="kitty-card mt-4 p-5">' +
+        '<div class="mb-3 font-extrabold text-slate-700">🔊 朗读设置</div>' +
+        '<div class="flex flex-col gap-3">' +
+          '<label class="flex flex-col gap-1 text-xs text-slate-500">朗读声音' +
+            '<select id="k-audio-voice" class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">' + buildVoiceOptions(voices) + '</select>' +
+          '</label>' +
+          '<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">' +
+            '<label class="flex flex-col gap-1 text-xs text-slate-500">语速' +
+              '<select id="k-audio-rate" class="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">' + rateSel + '</select>' +
+            '</label>' +
+            '<label class="flex items-center gap-2 self-end pb-1 text-sm text-slate-600">' +
+              '<input id="k-audio-repeat" type="checkbox" class="h-4 w-4 accent-kitty-500"' + (prefs.repeat ? ' checked' : '') + '>跟读两遍（先常速、再慢速，更容易听懂）' +
+            '</label>' +
+          '</div>' +
+          '<div class="flex items-center gap-3">' +
+            '<button id="k-audio-test" class="btn-kitty py-2.5">🔊 试听</button>' +
+            '<span id="k-audio-note" class="text-xs font-bold text-emerald-500"></span>' +
+          '</div>' + noVoiceNote +
+          '<div class="rounded-2xl bg-kitty-50 px-4 py-3 text-[11px] leading-5 text-slate-500">' +
+            '<div>👑「自然语音」声线最接近真人（Edge / Chrome 的 Microsoft Aria、Jenny 等，完全免费，联网时优先）；💾「本地语音」断网也能朗读。选中后立即生效，想听效果点「试听」。</div>' +
+            '<div class="mt-1">想要<b>断网也接近真人</b>的发音？Windows 打开「设置 → 时间和语言 → 语音 → 添加语音」，免费安装英文自然语音包（如 Microsoft Aria），重启应用后自动优先使用，完全不花钱。</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
   }
 
   /* ============================================================================
